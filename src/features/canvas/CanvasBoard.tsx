@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { useCanvasViewport } from "../../hooks/useCanvasViewport";
+import type { NodeStatus } from "../../design-system";
 import type { NodePosition, WorkflowEdge, WorkflowNode } from "../../types/workflow";
 import { GraphNode } from "./GraphNode";
 import { bezierPath, inPort, outPort } from "./nodeLayout";
@@ -13,6 +14,9 @@ export interface CanvasBoardProps {
   onMoveNode: (nodeId: string, position: NodePosition) => void;
   onCommitNodeMove: (nodeId: string, position: NodePosition) => void;
   onRemoveNode: (nodeId: string) => void;
+  /** Live execution state per node, written by the execution console. */
+  nodeStatuses?: Record<string, NodeStatus>;
+  failureReason?: string | null;
   /** Exposes the viewport controls (zoom, reset) to the toolbar. */
   onViewportReady?: (viewport: CanvasViewportHandle) => void;
 }
@@ -49,6 +53,8 @@ export function CanvasBoard({
   onMoveNode,
   onCommitNodeMove,
   onRemoveNode,
+  nodeStatuses,
+  failureReason = null,
   onViewportReady,
 }: CanvasBoardProps) {
   const viewport = useCanvasViewport();
@@ -188,6 +194,8 @@ export function CanvasBoard({
                 key={node.id}
                 node={node}
                 selected={selectedNodeId === node.id}
+                status={nodeStatuses?.[node.id] ?? "idle"}
+                failureReason={failureReason}
                 inDegree={counts.in}
                 outDegree={counts.out}
                 onSelect={onSelectNode}

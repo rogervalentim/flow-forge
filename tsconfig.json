@@ -36,6 +36,8 @@
     ".storybook/**/*.ts",
     "*.config.ts",
     "vitest.setup.ts",
-    "eslint.config.js"
+    "eslint.config.js",
+    "playwright.config.ts",
+    "tests/**/*.ts"
   ]
 }

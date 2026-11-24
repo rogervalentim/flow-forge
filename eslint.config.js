@@ -12,6 +12,7 @@ export default tseslint.config(
       "coverage",
       "reports",
       "node_modules",
+      "public/mockServiceWorker.js",
       "**/*.d.ts",
     ],
   },

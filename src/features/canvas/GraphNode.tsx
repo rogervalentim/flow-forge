@@ -9,6 +9,8 @@ export interface GraphNodeProps {
   node: WorkflowNode;
   selected: boolean;
   status?: NodeStatus;
+  /** Optional failure hint rendered in the subtitle while `status="error"`. */
+  failureReason?: string | null;
   /** Degree counts rendered as telemetry in the card footer. */
   inDegree: number;
   outDegree: number;
@@ -29,6 +31,7 @@ export const GraphNode = React.memo(function GraphNode({
   node,
   selected,
   status = "idle",
+  failureReason = null,
   inDegree,
   outDegree,
   onSelect,
@@ -71,7 +74,7 @@ export const GraphNode = React.memo(function GraphNode({
       <NodeCard
         kind={NODE_KIND[node.type]}
         title={nodeTitle(node)}
-        subtitle={nodeSubtitle(node)}
+        subtitle={status === "error" && failureReason !== null ? failureReason : nodeSubtitle(node)}
         status={status}
         icon={NODE_ICON[node.type]}
         selected={selected}

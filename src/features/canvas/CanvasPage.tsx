@@ -1,13 +1,16 @@
 import * as React from "react";
 import { Activity, Command, Layers, Link2, Trash2 } from "lucide-react";
 
-import { Badge, Button } from "../../design-system";
+import { Badge, Button, type NodeStatus } from "../../design-system";
 import { CanvasBoard, type CanvasViewportHandle } from "./CanvasBoard";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { NodeInspector } from "./NodeInspector";
 import { shortId } from "./nodeLayout";
 import { createSeedWorkflow } from "./seedWorkflow";
 import { useWorkflowGraph } from "../../hooks/useWorkflowGraph";
+import { ExecutionConsole } from "../playground/ExecutionConsole";
+import type { NetworkMode } from "../playground/networkModes";
+import { SnapshotDiffModal } from "../versioning/SnapshotDiffModal";
 import {
   nodeTitle,
   parseWorkflowJson,
@@ -41,6 +44,36 @@ export function CanvasPage({ storage }: CanvasPageProps) {
   });
   const [connectMode, setConnectMode] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
+
+  // Phase 3 — execution state, streamed back from the console.
+  const [consoleOpen, setConsoleOpen] = React.useState(true);
+  const [networkMode, setNetworkMode] = React.useState<NetworkMode>("normal");
+  const [snapshotsOpen, setSnapshotsOpen] = React.useState(false);
+  const [activeNodeId, setActiveNodeId] = React.useState<string | null>(null);
+  const [nodeOutcomes, setNodeOutcomes] = React.useState<Record<string, "success" | "error">>({});
+
+  const nodeStatuses = React.useMemo(() => {
+    const statuses: Record<string, NodeStatus> = {};
+    for (const node of graph.nodes) {
+      if (node.id === activeNodeId) statuses[node.id] = "running";
+      else if (nodeOutcomes[node.id] === "success") statuses[node.id] = "success";
+      else if (nodeOutcomes[node.id] === "error") statuses[node.id] = "error";
+    }
+    return statuses;
+  }, [graph.nodes, activeNodeId, nodeOutcomes]);
+
+  const handleRunStart = React.useCallback(() => {
+    setNodeOutcomes({});
+    setConsoleOpen(true);
+  }, []);
+
+  const handleRunEnd = React.useCallback(() => {
+    setActiveNodeId(null);
+  }, []);
+
+  const handleNodeOutcome = React.useCallback((nodeId: string, outcome: "success" | "error") => {
+    setNodeOutcomes((current) => ({ ...current, [nodeId]: outcome }));
+  }, []);
 
   const selectedNode = React.useMemo(
     () => graph.nodes.find((node) => node.id === selectedNodeId) ?? null,
@@ -127,6 +160,7 @@ export function CanvasPage({ storage }: CanvasPageProps) {
         onResetViewport={viewport.resetViewport}
         onRename={graph.renameWorkflow}
         onImport={handleImport}
+        onOpenSnapshots={() => setSnapshotsOpen(true)}
       />
 
       <div className="flex min-h-0 flex-1">
@@ -145,6 +179,7 @@ export function CanvasPage({ storage }: CanvasPageProps) {
             onMoveNode={graph.moveNodeTransient}
             onCommitNodeMove={graph.commitNodeMove}
             onRemoveNode={handleRemoveNode}
+            nodeStatuses={nodeStatuses}
             onViewportReady={handleViewportReady}
           />
 
@@ -203,6 +238,23 @@ export function CanvasPage({ storage }: CanvasPageProps) {
         />
       </div>
 
+      <ExecutionConsole
+        nodes={graph.nodes}
+        edges={graph.edges}
+        open={consoleOpen}
+        onOpenChange={setConsoleOpen}
+        networkMode={networkMode}
+        onNetworkModeChange={setNetworkMode}
+        activeNodeId={activeNodeId}
+        onActiveNodeChange={setActiveNodeId}
+        nodeOutcomes={nodeOutcomes}
+        onNodeOutcome={handleNodeOutcome}
+        onRunStart={handleRunStart}
+        onRunEnd={handleRunEnd}
+      />
+
+      <SnapshotDiffModal open={snapshotsOpen} onOpenChange={setSnapshotsOpen} nodes={graph.nodes} />
+
       <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-border-subtle bg-bg-panel px-3 font-mono text-[10px] tnum text-text-muted">
         <span className="flex items-center gap-1.5">
           <Layers size={10} strokeWidth={1.5} />
@@ -223,7 +275,7 @@ export function CanvasPage({ storage }: CanvasPageProps) {
         </span>
         <span className="ml-auto flex items-center gap-1.5">
           <Command size={10} strokeWidth={1.5} />
-          <span>phase 2 · graph engine</span>
+          <span>phase 3 · streaming playground</span>
         </span>
       </footer>
     </div>

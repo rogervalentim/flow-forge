@@ -1,6 +1,7 @@
 # FlowForge UI
 
-**AI Agent & Prompt Workflow Orchestrator** — Phase 1: Foundation, Design System & DevOps.
+**AI Agent & Prompt Workflow Orchestrator** — build, run and inspect prompt workflows with
+live streaming telemetry, fully mocked, fully offline.
 
 A dark, Swiss-Industrial / precision-tooling interface for building, running and
 inspecting prompt workflows. Flat surfaces, 1px structural borders, 6px geometry,
@@ -19,13 +20,82 @@ monospace telemetry.
 | Docs & tests   | Storybook 10 (`play` interaction tests) + Vitest (jsdom + browser)  |
 | Delivery       | Multi-stage Docker + Compose · GitHub Actions CI/CD                |
 
-## Getting started
+## Quickstart
+
+```bash
+docker compose --profile prod up --build   # app :3000 · Storybook :6006
+```
+
+No backend, no API keys, no `.env`: a Mock Service Worker serves the streaming
+endpoint from `public/mockServiceWorker.js`, so the production image is standalone.
+
+Local development:
 
 ```bash
 npm ci
 npm run dev            # app        → http://localhost:5173
 npm run storybook      # design sys → http://localhost:6006
 ```
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph UI["React 19 · Vite"]
+    direction TB
+    CB["CanvasBoard<br/><i>pan · zoom · drag</i>"]
+    EC["ExecutionConsole<br/><i>Run · Stop · telemetry</i>"]
+    SD["SnapshotDiffModal<br/><i>line diff</i>"]
+  end
+
+  subgraph State["Hooks"]
+    direction TB
+    WG["useWorkflowGraph<br/><i>undo/redo · Zod</i>"]
+    CV["useCanvasViewport<br/><i>transform → DOM</i>"]
+    SR["useStreamResponse<br/><i>SSE · RAF flush</i>"]
+  end
+
+  subgraph Net["Mock layer"]
+    direction TB
+    MSW["MSW worker<br/>POST /api/v1/workflows/execute"]
+    TOPO["topological order<br/>node_start → token → node_complete"]
+    CHAOS["scenarios<br/>normal · slow · rate-limit"]
+  end
+
+  LS[("localStorage<br/>flowforge:workflow:v1<br/>flowforge:snapshots:v1")]
+
+  CB --> WG
+  EC --> SR
+  SD --> LS
+  WG --> LS
+  SR -- "text/event-stream" --> MSW
+  MSW --> TOPO --> CHAOS
+  SR -. "node_start / node_complete" .-> CB
+```
+
+## Engineering highlights
+
+- **Batched streaming.** `useStreamResponse` parses SSE frames with `TextDecoder`,
+  buffers tokens in a ref and flushes once per `requestAnimationFrame` — a 200 token/s
+  stream re-renders at most 60×/s instead of once per token.
+- **Real cancellation.** An `AbortController` per run; starting a run aborts the
+  previous one, and unmount aborts silently. Status is a closed union:
+  `idle · connecting · streaming · completed · aborted · error`.
+- **Measured, not invented, telemetry.** `ttftMs`, `totalLatencyMs`, `tokenCount` and
+  `tokensPerSecond` come from `performance.now()` deltas around the actual response.
+- **Graph-aware mock.** The worker runs Kahn's topological sort over the posted nodes
+  and streams `node_start` / `token` / `node_complete` / `done`, so the canvas lights up
+  node by node exactly as a real orchestrator would.
+- **Chaos on demand.** A `x-mock-scenario` header switches between `normal`, `slow`
+  (1.5 s time-to-first-token) and `rate-limit` (a genuine `429` with `Retry-After`),
+  which the console renders as an error state with its HTTP badge.
+- **Snapshot diffing.** Named prompt snapshots in `localStorage` plus a dependency-free
+  LCS line diff with dual line numbers — the review surface for prompt changes.
+- **Contract-first.** One Zod schema validates hydration, import and every fixture; the
+  same discriminated union drives the canvas, the inspector and the mock.
+- **Tested three ways.** Vitest (jsdom) for hooks and reducers, Storybook `play`
+  functions in real Chromium for components, Playwright for the streaming loop
+  end-to-end against the production build.
 
 ## Scripts
 
@@ -39,7 +109,8 @@ npm run storybook      # design sys → http://localhost:6006
 | `npm run test`          | Vitest unit/component tests (jsdom) + JUnit report          |
 | `npm run test:ci`       | Same suite, CI reporter + JUnit output                      |
 | `npm run test:stories`  | Storybook `play` interactions in headless Chromium          |
-| `npm run test:all`      | Both suites                                                 |
+| `npm run test:e2e`      | Playwright E2E against `vite build` + `vite preview`         |
+| `npm run test:all`      | All three suites                                            |
 | `npm run storybook`     | Storybook dev server                                        |
 | `npm run build-storybook` | Static Storybook into `storybook-static/`                 |
 
@@ -111,6 +182,51 @@ are rejected with a `path: message` error.
 
 Only Phase 1 design-system components are used for UI chrome.
 
+## Phase 3 — streaming playground
+
+### `useStreamResponse` (`src/hooks/useStreamResponse.ts`)
+
+| Field / method  | Contract                                                                         |
+| --------------- | -------------------------------------------------------------------------------- |
+| `status`        | `'idle' \| 'connecting' \| 'streaming' \| 'completed' \| 'aborted' \| 'error'`     |
+| `content`       | Accumulated text, flushed once per animation frame                                |
+| `metrics`       | `{ ttftMs, totalLatencyMs, tokenCount, tokensPerSecond }`                         |
+| `error`         | Human-readable failure (`429 Too Many Requests · retry in 3s`, network, stream)   |
+| `httpStatus`    | Last response status, for the `200 OK` / `429` badge                              |
+| `executeStream` | `({ url, body, headers, onEvent, onSettled })` — aborts any run in flight          |
+| `abort` / `reset` | Cancel mid-stream / return to `idle`                                            |
+
+Pure helpers `parseSseChunk` and `tokenText` are exported for unit testing.
+
+### Mock layer (`src/mocks/`)
+
+- `handlers.ts` — `POST */api/v1/workflows/execute` returning a `ReadableStream` of
+  `text/event-stream`. Nodes are executed in topological order; each emits
+  `node_start`, one `token` per word (~25 ms) and `node_complete`, then `done`.
+- Scenario header `x-mock-scenario`: `normal` · `slow` (1.5 s first-token latency) ·
+  `rate-limit` (`429` + `Retry-After: 3`).
+- `browser.ts` — `setupWorker` registered from `main.tsx` before the first render;
+  failures degrade to a visible network error instead of a blank screen.
+
+### Execution console (`src/features/playground/`)
+
+Run / Stop / Clear, a live network-mode switch, and a telemetry row with TTFT, tok/s,
+token count, HTTP badge and status badge. `node_start` frames flip the matching
+`NodeCard` to `running`, `node_complete` to `success` — the canvas is the run's
+dashboard, not a static drawing.
+
+### Snapshots (`src/features/versioning/`)
+
+`SnapshotDiffModal` saves named prompt snapshots to `flowforge:snapshots:v1` and diffs
+any two versions (or a version against the current canvas) line by line, with dual
+gutter line numbers and add/remove colouring.
+
+### E2E (`tests/e2e/workflow.spec.ts`)
+
+Five Playwright specs against the production build: worker boot, a full stream that
+grows the console and ends `completed` / `200 OK`, mid-stream abort, the `429`
+scenario surfacing as an alert, and snapshot save + diff.
+
 ## Docker
 
 ```bash
@@ -140,6 +256,15 @@ src/
 │   ├── index.ts          # public surface of the design system
 │   ├── utils/cn.ts
 │   └── components/{Button,Badge,Input,Modal,NodeCard}/
-├── App.tsx               # Phase 1 shell: topbar, sidebar, canvas, inspector, status bar
+├── features/
+│   ├── canvas/           # CanvasBoard, CanvasToolbar, NodeInspector, GraphNode, seed
+│   ├── playground/       # ExecutionConsole, networkModes
+│   └── versioning/       # SnapshotDiffModal, snapshotStore (LCS diff)
+├── hooks/                # useUndoRedo, useCanvasViewport, useWorkflowGraph, useStreamResponse
+├── mocks/                # handlers (SSE + topological order), browser worker
+├── types/workflow.ts     # discriminated union + Zod schema
+├── App.tsx
 └── main.tsx
+tests/e2e/                # Playwright specs
+public/mockServiceWorker.js
 ```

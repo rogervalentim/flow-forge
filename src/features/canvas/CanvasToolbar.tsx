@@ -3,6 +3,7 @@ import {
   Bot,
   CheckSquare,
   Download,
+  History,
   Minus,
   Plus,
   Redo2,
@@ -29,6 +30,8 @@ export interface CanvasToolbarProps {
   onResetViewport: () => void;
   onRename: (name: string) => void;
   onImport: (json: string) => { ok: boolean; error?: string };
+  /** Opens the Phase 3 snapshot diff viewer. */
+  onOpenSnapshots?: () => void;
 }
 
 const CREATE_ACTIONS: { type: WorkflowNodeType; label: string; icon: React.ReactNode }[] = [
@@ -70,6 +73,7 @@ export function CanvasToolbar({
   onResetViewport,
   onRename,
   onImport,
+  onOpenSnapshots,
 }: CanvasToolbarProps) {
   const [title, setTitle] = React.useState(workflow.name);
   const [trackedName, setTrackedName] = React.useState(workflow.name);
@@ -199,6 +203,17 @@ export function CanvasToolbar({
             leadingIcon={<RotateCcw size={12} strokeWidth={1.5} />}
           />
         </div>
+
+        {onOpenSnapshots !== undefined && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onOpenSnapshots}
+            leadingIcon={<History size={14} strokeWidth={1.5} />}
+          >
+            Snapshots
+          </Button>
+        )}
 
         <Button
           size="sm"
