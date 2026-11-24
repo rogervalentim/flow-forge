@@ -32,10 +32,12 @@ npm run storybook      # design sys → http://localhost:6006
 | Script                  | What it does                                                |
 | ----------------------- | ----------------------------------------------------------- |
 | `npm run dev`           | Vite dev server with HMR                                    |
+| `npm run lint`          | ESLint (typescript-eslint type-checked, react-hooks)        |
 | `npm run build`         | `tsc --noEmit` then production bundle into `dist/`          |
 | `npm run preview`       | Serve the production bundle on `:4173`                      |
 | `npm run typecheck`     | Strict TypeScript, no emit                                  |
 | `npm run test`          | Vitest unit/component tests (jsdom) + JUnit report          |
+| `npm run test:ci`       | Same suite, CI reporter + JUnit output                      |
 | `npm run test:stories`  | Storybook `play` interactions in headless Chromium          |
 | `npm run test:all`      | Both suites                                                 |
 | `npm run storybook`     | Storybook dev server                                        |
@@ -78,6 +80,36 @@ import { Button, NodeCard } from "./design-system";
 
 Rejected in review: purple/neon gradients, glassmorphism blobs, heavy drop shadows,
 oversized radii. Selection and state are expressed with borders and colour tokens.
+
+## Phase 2 — graph engine
+
+### Domain (`src/types/workflow.ts`)
+
+`PromptNode` · `ToolNode` · `EvaluatorNode` form a discriminated union on `type`;
+`WorkflowEdge` and `WorkflowState` complete the model. Every payload is validated by
+Zod (`workflowSchema`) on hydration and on JSON import — unknown node types,
+out-of-range temperature/threshold, duplicate ids, dangling edges and self-loops
+are rejected with a `path: message` error.
+
+### Hooks (`src/hooks/`)
+
+| Hook                 | Contract                                                                                     |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| `useUndoRedo<T>`     | `useReducer` history (`past/present/future`), `set`/`setTransient`/`commit`, `undo`/`redo`, `canUndo`/`canRedo`, `reset`, `maxHistory` cap, `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, `Ctrl/Cmd+Y` — ignored while an `INPUT`, `TEXTAREA`, `SELECT` or `contentEditable` has focus. |
+| `useCanvasViewport`  | Pan/zoom written straight to the DOM (`translate3d … scale`), zoom clamped to `0.4–1.8`, wheel zoom anchored on the cursor, debounced `zoomPercent` readout, `resetViewport()`. |
+| `useWorkflowGraph`   | Wraps `useUndoRedo<WorkflowState>`: `addNode`, `updateNodeData`, `moveNodeTransient` (no history), `commitNodeMove` (one entry per drag), `removeNode` (cascades edges), `connectNodes` (rejects self-loops, duplicates and cycles), `removeEdge`, `renameWorkflow`, `replaceWorkflow`; persists to `flowforge:workflow:v1` with a 400 ms debounce. |
+
+### Canvas (`src/features/canvas/`)
+
+- `CanvasBoard` — dot-grid viewport, draggable `NodeCard`s, `<svg>` layer with cubic
+  Bezier edges between ports, empty state.
+- `CanvasToolbar` — editable workflow title, `+ Prompt` / `+ Tool` / `+ Evaluator`,
+  Undo/Redo with live state and `<kbd>` hints, zoom control, Export JSON and Import
+  (Zod-validated) modals.
+- `NodeInspector` — 320px panel with type-specific controls (model select, temperature
+  slider, prompt textarea, tool endpoint/timeout, criteria + pass threshold) and delete.
+
+Only Phase 1 design-system components are used for UI chrome.
 
 ## Docker
 

@@ -36,6 +36,9 @@ jobs:
       - name: tsc --noEmit (strict, noUncheckedIndexedAccess)
         run: npm run typecheck
 
+      - name: ESLint
+        run: npm run lint
+
   # ── 2. Unit + component tests ──────────────────────────────────────────────
   unit:
     name: Unit tests (Vitest)

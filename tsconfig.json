@@ -1,12 +1,15 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "useDefineForClassFields": true,
-
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
@@ -15,14 +18,24 @@
     "noImplicitOverride": true,
     "exactOptionalPropertyTypes": false,
     "forceConsistentCasingInFileNames": true,
-
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"]
+    "types": [
+      "vite/client",
+      "vitest/globals",
+      "@testing-library/jest-dom",
+      "node"
+    ]
   },
-  "include": ["src", ".storybook", "vite.config.ts", "vitest.setup.ts"]
+  "include": [
+    "src",
+    ".storybook/**/*.ts",
+    "*.config.ts",
+    "vitest.setup.ts",
+    "eslint.config.js"
+  ]
 }
