@@ -51,6 +51,7 @@ export const GraphNode = React.memo(function GraphNode({
       data-canvas-node=""
       data-node-id={node.id}
       data-node-type={node.type}
+      data-testid="graph-node"
       style={{ left: node.position.x, top: node.position.y, width: NODE_WIDTH }}
       className="absolute select-none touch-none"
       onPointerDown={handlePointerDown}
@@ -69,6 +70,7 @@ export const GraphNode = React.memo(function GraphNode({
       }}
       role="group"
       aria-label={`${node.type} node ${nodeTitle(node)}`}
+      aria-selected={selected}
       tabIndex={0}
     >
       <NodeCard

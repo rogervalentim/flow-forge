@@ -62,6 +62,13 @@ export function CanvasPage({ storage }: CanvasPageProps) {
     return statuses;
   }, [graph.nodes, activeNodeId, nodeOutcomes]);
 
+  // Transient notices clear themselves so they never sit on top of the canvas.
+  React.useEffect(() => {
+    if (notice === null) return;
+    const timer = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   const handleRunStart = React.useCallback(() => {
     setNodeOutcomes({});
     setConsoleOpen(true);
@@ -163,7 +170,7 @@ export function CanvasPage({ storage }: CanvasPageProps) {
         onOpenSnapshots={() => setSnapshotsOpen(true)}
       />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         <div className="relative flex min-w-0 flex-1 flex-col">
           <CanvasBoard
             nodes={graph.nodes}
@@ -185,7 +192,7 @@ export function CanvasPage({ storage }: CanvasPageProps) {
 
           {/* Floating connect affordance — appears with a selection. */}
           {selectedNode !== null && (
-            <div className="pointer-events-auto absolute bottom-3 left-3 flex items-center gap-2 rounded-md border border-border-subtle bg-bg-panel px-2 py-1.5">
+            <div className="pointer-events-auto absolute left-3 top-3 flex items-center gap-2 rounded-md border border-border-subtle bg-bg-panel px-2 py-1.5">
               <Badge tone={connectMode !== null ? "accent" : "neutral"} mono dot>
                 {connectMode !== null ? "pick target" : "selected"}
               </Badge>
@@ -221,7 +228,7 @@ export function CanvasPage({ storage }: CanvasPageProps) {
           {notice !== null && (
             <div
               role="status"
-              className="absolute bottom-3 right-3 flex items-center gap-2 rounded-md border border-border-subtle bg-bg-panel px-2 py-1.5"
+              className="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-2 rounded-md border border-border-subtle bg-bg-panel px-2 py-1.5"
             >
               <span className="font-mono text-[10px] text-text-secondary">{notice}</span>
               <Button size="sm" variant="ghost" onClick={() => setNotice(null)}>
@@ -235,6 +242,7 @@ export function CanvasPage({ storage }: CanvasPageProps) {
           node={selectedNode}
           onChange={handleUpdateNodeData}
           onRemove={handleRemoveNode}
+          onClose={() => setSelectedNodeId(null)}
         />
       </div>
 

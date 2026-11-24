@@ -175,7 +175,7 @@ export function CanvasBoard({
                 selectedNodeId === source.id || selectedNodeId === target.id;
 
               return (
-                <g key={edge.id} data-edge-id={edge.id}>
+                <g key={edge.id} data-edge-id={edge.id} data-testid="graph-edge">
                   <path
                     d={bezierPath(outPort(source), inPort(target))}
                     fill="none"

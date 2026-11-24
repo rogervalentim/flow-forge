@@ -60,24 +60,24 @@ function TelemetryBar({
 
   return (
     <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] tnum">
-      <span className="flex items-baseline gap-1.5">
+      <span data-testid="metric-ttft" className="flex items-baseline gap-1.5">
         <span className="uppercase tracking-[0.08em] text-text-muted">ttft</span>
         <span className="text-text-primary">
           {metrics.ttftMs === null ? "—" : `${Math.round(metrics.ttftMs)}ms`}
         </span>
       </span>
-      <span className="flex items-baseline gap-1.5">
+      <span data-testid="metric-tokps" className="flex items-baseline gap-1.5">
         <span className="uppercase tracking-[0.08em] text-text-muted">tok/s</span>
         <span className="text-text-primary">{metrics.tokensPerSecond.toFixed(1)}</span>
       </span>
-      <span className="flex items-baseline gap-1.5">
+      <span data-testid="metric-tokens" className="flex items-baseline gap-1.5">
         <span className="uppercase tracking-[0.08em] text-text-muted">tokens</span>
         <span className="text-text-primary">{metrics.tokenCount}</span>
       </span>
-      <Badge tone={http.tone} mono dot>
+      <Badge tone={http.tone} mono dot data-testid="metric-http">
         {http.label}
       </Badge>
-      <Badge tone={statusTone(status)} mono>
+      <Badge tone={statusTone(status)} mono data-testid="metric-status">
         {status}
       </Badge>
     </div>

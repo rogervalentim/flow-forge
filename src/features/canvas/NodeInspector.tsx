@@ -13,6 +13,11 @@ export interface NodeInspectorProps {
   node: WorkflowNode | null;
   onChange: (nodeId: string, patch: Record<string, unknown>) => void;
   onRemove: (nodeId: string) => void;
+  /**
+   * Below `lg` the panel overlays the canvas instead of taking a column, so it
+   * needs an explicit close affordance.
+   */
+  onClose?: () => void;
 }
 
 function Field({
@@ -131,6 +136,7 @@ function TextArea({
       <span className="text-[11px] font-medium tracking-[0.01em] text-text-secondary">{label}</span>
       <textarea
         aria-label={label}
+        data-testid={`inspector-field-${label.toLowerCase().replace(/\s+/g, "-")}`}
         value={draft}
         onChange={(event) => {
           setDraft(event.target.value);
@@ -151,21 +157,35 @@ function TextArea({
  * through `onChange`, which lands in the graph history as one undoable step
  * per keystroke group (the hook dedupes identical values).
  */
-export function NodeInspector({ node, onChange, onRemove }: NodeInspectorProps) {
+export function NodeInspector({ node, onChange, onRemove, onClose }: NodeInspectorProps) {
   return (
     <aside
       aria-label="Node inspector"
-      className="hidden w-[320px] shrink-0 flex-col border-l border-border-subtle bg-bg-panel lg:flex"
+      data-testid="node-inspector"
+      className="absolute inset-y-0 right-0 z-20 flex w-[320px] max-w-full shrink-0 flex-col border-l border-border-subtle bg-bg-panel lg:static lg:z-auto"
     >
       <div className="flex items-center justify-between border-b border-border-subtle px-3 py-2.5">
         <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
           Inspector
         </span>
-        {node !== null && (
-          <Badge tone="accent" mono>
-            {NODE_KIND[node.type]}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {node !== null && (
+            <Badge tone="accent" mono>
+              {NODE_KIND[node.type]}
+            </Badge>
+          )}
+          {onClose !== undefined && (
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="Close inspector"
+              className="lg:hidden"
+              onClick={onClose}
+            >
+              Close
+            </Button>
+          )}
+        </div>
       </div>
 
       {node === null ? (
