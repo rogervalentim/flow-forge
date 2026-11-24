@@ -1,0 +1,114 @@
+/*
+ * FlowForge UI — Design System Tokens
+ * Swiss Industrial / Precision Tooling.
+ *
+ * Single source of truth for the semantic palette, geometry and typography.
+ * Tailwind CSS v4 reads the `@theme` block below and generates utilities:
+ *   --color-bg-canvas      -> bg-bg-canvas, text-bg-canvas, border-bg-canvas
+ *   --radius-md            -> rounded-md
+ *   --font-mono            -> font-mono
+ * Do not hardcode hex values in components. Always reference a token.
+ */
+
+@import "tailwindcss";
+
+@theme {
+  /* ── Surfaces ───────────────────────────────────────────────────────── */
+  --color-bg-canvas: #0a0a0b;
+  --color-bg-panel: #121215;
+  --color-bg-elevated: #18181c;
+
+  /* ── Borders (structural 1px hairlines) ─────────────────────────────── */
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+
+  /* ── Typography ─────────────────────────────────────────────────────── */
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+
+  /* ── Accents ────────────────────────────────────────────────────────── */
+  --color-accent-primary: #0070f3;
+  --color-status-success: #10b981;
+  --color-status-warning: #f59e0b;
+  --color-status-error: #ef4444;
+
+  /* ── Geometry ───────────────────────────────────────────────────────── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  /* ── Fonts ──────────────────────────────────────────────────────────── */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* ── Telemetry grid (used by the canvas dot-grid) ───────────────────── */
+  --color-grid-dot: #27272a;
+  --spacing-grid: 24px;
+}
+
+/* ── Base layer ──────────────────────────────────────────────────────── */
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-bg-canvas);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    font-variant-ligatures: contextual;
+  }
+
+  /* Selection is a structural highlight, never a soft gradient. */
+  ::selection {
+    background-color: color-mix(in srgb, var(--color-accent-primary) 32%, transparent);
+    color: var(--color-text-primary);
+  }
+
+  /* Focus rings: 1px accent, offset — visible on every dark surface. */
+  :focus-visible {
+    outline: 1px solid var(--color-accent-primary);
+    outline-offset: 2px;
+  }
+
+  /* Monospace numerals for every metric, ID and latency readout. */
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ── Utilities ───────────────────────────────────────────────────────── */
+
+/* Viewport dot-grid: 1px dots on a 24px lattice. No blobs, no glows. */
+@utility bg-dot-grid {
+  background-image: radial-gradient(var(--color-grid-dot) 1px, transparent 1px);
+  background-size: var(--spacing-grid) var(--spacing-grid);
+  background-position: center center;
+}
+
+/* Tabular figures for telemetry counters. */
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Reduced motion: the design relies on state, never on animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

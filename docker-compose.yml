@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# FlowForge UI — local orchestration
+#
+#   docker compose --profile prod up -d --build   # web :3000, storybook :6006
+#   docker compose --profile dev up web-dev storybook-dev   # HMR
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: flowforge-ui
+
+services:
+  # ── Production images ─────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      target: runtime
+    image: flowforge/web:local
+    container_name: flowforge-web
+    ports:
+      - "3000:8080"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    profiles: ["prod"]
+
+  storybook:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.storybook
+      target: runtime
+    image: flowforge/storybook:local
+    container_name: flowforge-storybook
+    ports:
+      - "6006:8080"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    profiles: ["prod"]
+
+  # ── Development images (bind-mounted source, hot reload) ──────────────────
+  web-dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      target: development
+    image: flowforge/web:dev
+    container_name: flowforge-web-dev
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+    ports:
+      - "5173:5173"
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    profiles: ["dev"]
+
+  storybook-dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.storybook
+      target: development
+    image: flowforge/storybook:dev
+    container_name: flowforge-storybook-dev
+    command: ["npm", "run", "storybook", "--", "--host", "0.0.0.0", "--port", "6006"]
+    ports:
+      - "6006:6006"
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    profiles: ["dev"]
+
+volumes:
+  node_modules:
